@@ -1,0 +1,192 @@
+spring:
+  application:
+    name: paysense-backend
+  datasource:
+    url: ${PAYSENSE_DB_URL:jdbc:postgresql://localhost:5432/paysense}
+    username: ${PAYSENSE_DB_USER:paysense}
+    password: ${PAYSENSE_DB_PASSWORD:paysense}
+    hikari:
+      maximum-pool-size: ${PAYSENSE_DB_POOL_SIZE:15}
+      minimum-idle: 2
+      connection-timeout: 3000
+      validation-timeout: 1000
+      max-lifetime: 1500000
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: validate   # the schema is owned by Flyway; Hibernate only verifies it
+    properties:
+      hibernate.jdbc.time_zone: UTC
+      hibernate.jdbc.batch_size: 50
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+  jackson:
+    default-property-inclusion: non_null
+    deserialization:
+      use-big-decimal-for-floats: true
+      fail-on-unknown-properties: false
+    serialization:
+      write-dates-as-timestamps: false
+    time-zone: UTC
+  data:
+    redis:
+      host: ${PAYSENSE_REDIS_HOST:localhost}
+      port: ${PAYSENSE_REDIS_PORT:6379}
+      timeout: 500ms
+      connect-timeout: 500ms
+  kafka:
+    bootstrap-servers: ${PAYSENSE_KAFKA_BOOTSTRAP:localhost:9092}
+    producer:
+      acks: all
+      properties:
+        enable.idempotence: true
+        max.in.flight.requests.per.connection: 5
+        delivery.timeout.ms: 15000
+        request.timeout.ms: 5000
+        max.block.ms: 5000
+    consumer:
+      enable-auto-commit: false
+      auto-offset-reset: earliest
+      properties:
+        max.poll.interval.ms: 120000
+  lifecycle:
+    timeout-per-shutdown-phase: 20s
+
+server:
+  port: 8080
+  shutdown: graceful
+  tomcat:
+    threads:
+      max: 100
+    connection-timeout: 10s
+    max-http-form-post-size: 64KB
+  error:
+    include-stacktrace: never
+    include-message: never
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,prometheus,metrics,info
+  endpoint:
+    health:
+      probes:
+        enabled: true
+      show-details: never
+      group:
+        liveness:
+          include: livenessState
+        readiness:
+          include: readinessState,db
+  metrics:
+    distribution:
+      percentiles-histogram:
+        http.server.requests: true
+    tags:
+      application: paysense-backend
+  tracing:
+    sampling:
+      probability: ${PAYSENSE_TRACE_SAMPLING:0.1}
+  otlp:
+    tracing:
+      endpoint: ${OTEL_EXPORTER_OTLP_TRACES_ENDPOINT:http://localhost:4318/v1/traces}
+
+springdoc:
+  swagger-ui:
+    path: /swagger-ui.html
+  api-docs:
+    path: /v3/api-docs
+
+paysense:
+  environment: ${PAYSENSE_ENV:development}   # development | production
+  scheduling-enabled: true
+  security:
+    jwt-secret: ${PAYSENSE_JWT_SECRET:dev-only-secret-change-me-dev-only-secret-change-me}
+    jwt-ttl-minutes: 60
+    service-token: ${PAYSENSE_SERVICE_TOKEN:dev-service-token}
+    metrics-user: ${PAYSENSE_METRICS_USER:prometheus}
+    metrics-password: ${PAYSENSE_METRICS_PASSWORD:dev-metrics-password}
+    callback-secret: ${PAYSENSE_CALLBACK_SECRET:dev-callback-secret}
+    demo-users-enabled: ${PAYSENSE_DEMO_USERS_ENABLED:true}
+    demo-password-viewer: ${PAYSENSE_DEMO_VIEWER_PASSWORD:viewer-demo-pass}
+    demo-password-investigator: ${PAYSENSE_DEMO_INVESTIGATOR_PASSWORD:investigator-demo-pass}
+    demo-password-admin: ${PAYSENSE_DEMO_ADMIN_PASSWORD:admin-demo-pass}
+    max-request-bytes: 65536
+  payments:
+    supported-currencies: EUR,USD,GBP,JPY,CHF,SEK
+    max-amount: 1000000
+    in-flight-timeout: 2m          # PROCESSING/CAPTURING/REFUNDING older than this is marked UNCERTAIN
+    recovery-interval: 30s
+    idempotency-ttl: 24h
+    idempotency-in-progress-timeout: 60s
+  processors:
+    names: MOCK_PROCESSOR,MOCK_PROCESSOR_EU
+    call-timeout: 5s
+    retry:
+      max-attempts: 3
+      initial-backoff: 100ms
+      max-backoff: 2s
+      multiplier: 2.0
+      max-elapsed: 8s
+    circuit-breaker:
+      window-size: 20
+      min-calls: 10
+      failure-rate-threshold: 0.5
+      open-duration: 15s
+      half-open-calls: 3
+    max-concurrent-calls: 50
+  simulation:
+    enabled: true        # MUST be false in production; the controller and magic triggers disappear
+    real-delay: true
+    seed: 42
+  events:
+    transport: in-process     # kafka | in-process
+    topic: paysense.events.v1
+    partitions: 3
+    consumer-group: paysense-event-handlers
+    outbox:
+      batch-size: 50
+      poll-interval: 500ms
+      max-attempts: 12
+      initial-backoff: 500ms
+      max-backoff: 60s
+      retention: 7d
+    consumer:
+      max-attempts: 4
+      initial-backoff: 200ms
+      max-backoff: 5s
+      multiplier: 2.0
+      max-elapsed: 20s
+  uncertain-resolution:
+    max-lookups: 5
+  redis:
+    enabled: true
+  rate-limit:
+    ai-per-minute: 20
+    login-per-minute: 20
+  analytics:
+    max-window: 31d
+    default-window: 24h
+    min-latency-sample: 20
+    cache-ttl: 10s
+  ai:
+    base-url: ${PAYSENSE_AI_URL:http://localhost:8090}
+    service-token: ${PAYSENSE_AI_SERVICE_TOKEN:dev-ai-internal-token}
+    connect-timeout: 1s
+    read-timeout: 45s
+    retention: 30d
+  retention:
+    operational-logs: 7d
+    processed-events: 14d
+  seed:
+    on-start: false
+  runbooks:
+    load-on-start: true
+
+logging:
+  level:
+    root: INFO
+    org.apache.kafka: WARN
+    org.hibernate.SQL: WARN

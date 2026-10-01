@@ -1,0 +1,26 @@
+# build outputs
+backend/build/
+backend/.gradle/
+backend/.kotlin/
+frontend/node_modules/
+frontend/dist/
+frontend/playwright-report/
+frontend/test-results/
+e2e/node_modules/
+e2e/playwright-report/
+e2e/test-results/
+ai-service/.venv/
+**/__pycache__/
+**/.pytest_cache/
+**/.ruff_cache/
+**/.mypy_cache/
+*.egg-info/
+# local configuration (never commit secrets)
+.env
+.env.local
+*.log
+.idea/
+.vscode/
+.DS_Store
+loadtest/results/*.json
+!loadtest/results/.gitkeep

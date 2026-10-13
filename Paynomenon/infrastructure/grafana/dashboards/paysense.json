@@ -1,0 +1,489 @@
+{
+ "uid": "paysense-overview",
+ "title": "PaySense operations",
+ "tags": [
+  "paysense"
+ ],
+ "timezone": "utc",
+ "schemaVersion": 39,
+ "version": 1,
+ "refresh": "10s",
+ "time": {
+  "from": "now-1h",
+  "to": "now"
+ },
+ "templating": {
+  "list": []
+ },
+ "annotations": {
+  "list": []
+ },
+ "panels": [
+  {
+   "id": 1,
+   "title": "Payment operation outcomes /s",
+   "type": "timeseries",
+   "description": "Business outcomes recorded when a processor result is applied.",
+   "gridPos": {
+    "x": 0,
+    "y": 0,
+    "w": 12,
+    "h": 8
+   },
+   "datasource": {
+    "type": "prometheus",
+    "uid": "prometheus"
+   },
+   "fieldConfig": {
+    "defaults": {
+     "unit": "ops"
+    },
+    "overrides": []
+   },
+   "targets": [
+    {
+     "expr": "sum by (operation, outcome) (rate(paysense_payment_outcomes_total[5m]))",
+     "legendFormat": "{{operation}} {{outcome}}",
+     "refId": "A"
+    }
+   ]
+  },
+  {
+   "id": 2,
+   "title": "HTTP requests /s and 5xx /s",
+   "type": "timeseries",
+   "description": "",
+   "gridPos": {
+    "x": 12,
+    "y": 0,
+    "w": 12,
+    "h": 8
+   },
+   "datasource": {
+    "type": "prometheus",
+    "uid": "prometheus"
+   },
+   "fieldConfig": {
+    "defaults": {
+     "unit": "reqps"
+    },
+    "overrides": []
+   },
+   "targets": [
+    {
+     "expr": "sum(rate(http_server_requests_seconds_count[1m]))",
+     "legendFormat": "requests",
+     "refId": "A"
+    },
+    {
+     "expr": "sum(rate(http_server_requests_seconds_count{status=~\"5..\"}[1m]))",
+     "legendFormat": "5xx",
+     "refId": "B"
+    }
+   ]
+  },
+  {
+   "id": 3,
+   "title": "HTTP latency p95 / p99",
+   "type": "timeseries",
+   "description": "",
+   "gridPos": {
+    "x": 0,
+    "y": 8,
+    "w": 12,
+    "h": 8
+   },
+   "datasource": {
+    "type": "prometheus",
+    "uid": "prometheus"
+   },
+   "fieldConfig": {
+    "defaults": {
+     "unit": "s"
+    },
+    "overrides": []
+   },
+   "targets": [
+    {
+     "expr": "histogram_quantile(0.95, sum by (le) (rate(http_server_requests_seconds_bucket[5m])))",
+     "legendFormat": "p95",
+     "refId": "A"
+    },
+    {
+     "expr": "histogram_quantile(0.99, sum by (le) (rate(http_server_requests_seconds_bucket[5m])))",
+     "legendFormat": "p99",
+     "refId": "B"
+    }
+   ]
+  },
+  {
+   "id": 4,
+   "title": "Processor latency p95 by processor",
+   "type": "timeseries",
+   "description": "",
+   "gridPos": {
+    "x": 12,
+    "y": 8,
+    "w": 12,
+    "h": 8
+   },
+   "datasource": {
+    "type": "prometheus",
+    "uid": "prometheus"
+   },
+   "fieldConfig": {
+    "defaults": {
+     "unit": "s"
+    },
+    "overrides": []
+   },
+   "targets": [
+    {
+     "expr": "histogram_quantile(0.95, sum by (le, processor) (rate(paysense_processor_latency_seconds_bucket[5m])))",
+     "legendFormat": "{{processor}} p95",
+     "refId": "A"
+    },
+    {
+     "expr": "histogram_quantile(0.99, sum by (le, processor) (rate(paysense_processor_latency_seconds_bucket[5m])))",
+     "legendFormat": "{{processor}} p99",
+     "refId": "B"
+    }
+   ]
+  },
+  {
+   "id": 5,
+   "title": "Processor retries /s and rejected calls /s",
+   "type": "timeseries",
+   "description": "",
+   "gridPos": {
+    "x": 0,
+    "y": 16,
+    "w": 12,
+    "h": 8
+   },
+   "datasource": {
+    "type": "prometheus",
+    "uid": "prometheus"
+   },
+   "fieldConfig": {
+    "defaults": {
+     "unit": "ops"
+    },
+    "overrides": []
+   },
+   "targets": [
+    {
+     "expr": "sum by (processor) (rate(paysense_processor_retries_total[5m]))",
+     "legendFormat": "retries {{processor}}",
+     "refId": "A"
+    },
+    {
+     "expr": "sum by (processor, reason) (rate(paysense_processor_rejected_total[5m]))",
+     "legendFormat": "rejected {{processor}} {{reason}}",
+     "refId": "B"
+    }
+   ]
+  },
+  {
+   "id": 6,
+   "title": "Circuit breaker state (0=closed, 1=open, 2=half-open)",
+   "type": "timeseries",
+   "description": "",
+   "gridPos": {
+    "x": 12,
+    "y": 16,
+    "w": 12,
+    "h": 8
+   },
+   "datasource": {
+    "type": "prometheus",
+    "uid": "prometheus"
+   },
+   "fieldConfig": {
+    "defaults": {
+     "unit": "short"
+    },
+    "overrides": []
+   },
+   "targets": [
+    {
+     "expr": "paysense_circuit_state",
+     "legendFormat": "{{processor}}",
+     "refId": "A"
+    },
+    {
+     "expr": "sum by (processor, to) (increase(paysense_circuit_transitions_total[15m]))",
+     "legendFormat": "transitions {{processor}} -> {{to}}",
+     "refId": "B"
+    }
+   ]
+  },
+  {
+   "id": 7,
+   "title": "Outbox backlog",
+   "type": "timeseries",
+   "description": "Events written in the business transaction but not yet published.",
+   "gridPos": {
+    "x": 0,
+    "y": 24,
+    "w": 12,
+    "h": 8
+   },
+   "datasource": {
+    "type": "prometheus",
+    "uid": "prometheus"
+   },
+   "fieldConfig": {
+    "defaults": {
+     "unit": "short"
+    },
+    "overrides": []
+   },
+   "targets": [
+    {
+     "expr": "paysense_outbox_pending",
+     "legendFormat": "pending",
+     "refId": "A"
+    },
+    {
+     "expr": "paysense_outbox_failed",
+     "legendFormat": "failed (needs requeue)",
+     "refId": "B"
+    },
+    {
+     "expr": "paysense_outbox_oldest_pending_age_seconds",
+     "legendFormat": "oldest pending age (s)",
+     "refId": "C"
+    }
+   ]
+  },
+  {
+   "id": 8,
+   "title": "Dead-lettered events (unresolved)",
+   "type": "timeseries",
+   "description": "",
+   "gridPos": {
+    "x": 12,
+    "y": 24,
+    "w": 12,
+    "h": 8
+   },
+   "datasource": {
+    "type": "prometheus",
+    "uid": "prometheus"
+   },
+   "fieldConfig": {
+    "defaults": {
+     "unit": "short"
+    },
+    "overrides": []
+   },
+   "targets": [
+    {
+     "expr": "paysense_events_dead_letters",
+     "legendFormat": "dead letters",
+     "refId": "A"
+    },
+    {
+     "expr": "sum by (handler) (increase(paysense_events_dead_lettered_total[1h]))",
+     "legendFormat": "new in 1h {{handler}}",
+     "refId": "B"
+    }
+   ]
+  },
+  {
+   "id": 9,
+   "title": "Event handling /s",
+   "type": "timeseries",
+   "description": "",
+   "gridPos": {
+    "x": 0,
+    "y": 32,
+    "w": 12,
+    "h": 8
+   },
+   "datasource": {
+    "type": "prometheus",
+    "uid": "prometheus"
+   },
+   "fieldConfig": {
+    "defaults": {
+     "unit": "ops"
+    },
+    "overrides": []
+   },
+   "targets": [
+    {
+     "expr": "sum by (handler, result) (rate(paysense_events_handled_total[5m]))",
+     "legendFormat": "{{handler}} {{result}}",
+     "refId": "A"
+    },
+    {
+     "expr": "sum by (result) (rate(paysense_outbox_publish_total[5m]))",
+     "legendFormat": "outbox publish {{result}}",
+     "refId": "B"
+    }
+   ]
+  },
+  {
+   "id": 10,
+   "title": "AI requests /s by task and outcome",
+   "type": "timeseries",
+   "description": "",
+   "gridPos": {
+    "x": 12,
+    "y": 32,
+    "w": 12,
+    "h": 8
+   },
+   "datasource": {
+    "type": "prometheus",
+    "uid": "prometheus"
+   },
+   "fieldConfig": {
+    "defaults": {
+     "unit": "ops"
+    },
+    "overrides": []
+   },
+   "targets": [
+    {
+     "expr": "sum by (task, status) (rate(paysense_ai_requests_total[5m]))",
+     "legendFormat": "{{task}} {{status}}",
+     "refId": "A"
+    }
+   ]
+  },
+  {
+   "id": 11,
+   "title": "AI latency p95 and provider errors",
+   "type": "timeseries",
+   "description": "",
+   "gridPos": {
+    "x": 0,
+    "y": 40,
+    "w": 12,
+    "h": 8
+   },
+   "datasource": {
+    "type": "prometheus",
+    "uid": "prometheus"
+   },
+   "fieldConfig": {
+    "defaults": {
+     "unit": "short"
+    },
+    "overrides": []
+   },
+   "targets": [
+    {
+     "expr": "histogram_quantile(0.95, sum by (le, task) (rate(paysense_ai_request_seconds_bucket[5m])))",
+     "legendFormat": "p95 {{task}}",
+     "refId": "A"
+    },
+    {
+     "expr": "sum by (category) (increase(paysense_ai_provider_errors_total[15m]))",
+     "legendFormat": "errors {{category}}",
+     "refId": "B"
+    }
+   ]
+  },
+  {
+   "id": 12,
+   "title": "AI tokens /min",
+   "type": "timeseries",
+   "description": "",
+   "gridPos": {
+    "x": 12,
+    "y": 40,
+    "w": 12,
+    "h": 8
+   },
+   "datasource": {
+    "type": "prometheus",
+    "uid": "prometheus"
+   },
+   "fieldConfig": {
+    "defaults": {
+     "unit": "short"
+    },
+    "overrides": []
+   },
+   "targets": [
+    {
+     "expr": "sum by (provider, type) (rate(paysense_ai_tokens_total[5m])) * 60",
+     "legendFormat": "{{provider}} {{type}}",
+     "refId": "A"
+    }
+   ]
+  },
+  {
+   "id": 13,
+   "title": "DB pool and JVM heap",
+   "type": "timeseries",
+   "description": "",
+   "gridPos": {
+    "x": 0,
+    "y": 48,
+    "w": 12,
+    "h": 8
+   },
+   "datasource": {
+    "type": "prometheus",
+    "uid": "prometheus"
+   },
+   "fieldConfig": {
+    "defaults": {
+     "unit": "short"
+    },
+    "overrides": []
+   },
+   "targets": [
+    {
+     "expr": "hikaricp_connections_active",
+     "legendFormat": "active connections",
+     "refId": "A"
+    },
+    {
+     "expr": "hikaricp_connections_pending",
+     "legendFormat": "pending",
+     "refId": "B"
+    },
+    {
+     "expr": "sum(jvm_memory_used_bytes{area=\"heap\"}) / 1e6",
+     "legendFormat": "heap MB",
+     "refId": "C"
+    }
+   ]
+  },
+  {
+   "id": 14,
+   "title": "Anomalies detected /h",
+   "type": "timeseries",
+   "description": "",
+   "gridPos": {
+    "x": 12,
+    "y": 48,
+    "w": 12,
+    "h": 8
+   },
+   "datasource": {
+    "type": "prometheus",
+    "uid": "prometheus"
+   },
+   "fieldConfig": {
+    "defaults": {
+     "unit": "short"
+    },
+    "overrides": []
+   },
+   "targets": [
+    {
+     "expr": "sum by (metric, severity) (increase(paysense_ai_anomalies_detected_total[1h]))",
+     "legendFormat": "{{metric}} {{severity}}",
+     "refId": "A"
+    }
+   ]
+  }
+ ]
+}
